@@ -10,20 +10,16 @@ import base64
 import certifi
 import os
 
-# Thiết lập chứng chỉ SSL cho môi trường cloud
 os.environ['SSL_CERT_FILE'] = certifi.where()
 
-# Cấu hình giao diện Streamlit toàn trang (Wide mode)
 st.set_page_config(page_title="Big Data Streaming Dashboard", layout="wide")
 
-# --- 1. Tải mô hình AI (Cache để không bị load lại nhiều lần) ---
 @st.cache_resource
 def load_sentiment_model():
     return pipeline("sentiment-analysis", model="cardiffnlp/twitter-roberta-base-sentiment-latest")
 
 sentiment_analyzer = load_sentiment_model()
 
-# --- 2. Dữ liệu mẫu đánh giá thời trang ---
 sample_reviews = [
     ("Just what I needed. Great pants.", 5.0),
     ("Great price for a great item", 5.0),
@@ -40,7 +36,6 @@ sample_reviews = [
     ("Good value for money, stylish design.", 4.0)
 ]
 
-# --- 3. Khởi tạo trạng thái phiên làm việc (Session State) ---
 if "history" not in st.session_state:
     st.session_state.history = []
 if "processed_count" not in st.session_state:
@@ -48,9 +43,8 @@ if "processed_count" not in st.session_state:
 if "started_at" not in st.session_state:
     st.session_state.started_at = time.monotonic()
 
-run_duration = 1800 # Giả lập thời gian chạy 1800 giây
+run_duration = 1800
 
-# --- 4. Hàm vẽ biểu đồ cột 3D phân phối cảm xúc ---
 def generate_3d_chart_base64(rows):
     categories = ['Rất tích cực', 'Tích cực', 'Trung lập', 'Tiêu cực', 'Rất tiêu cực']
     counts = {cat: 0 for cat in categories}
@@ -73,7 +67,6 @@ def generate_3d_chart_base64(rows):
     dz = y_vals
     
     bar_x = x - 0.2
-    # Màu sắc cột biểu đồ đồng bộ chuẩn với Colab
     bar_colors = ['#2b8a3e', '#51cf66', '#ced4da', '#ff6b6b', '#c92a2a']
     
     ax.bar3d(bar_x, y, z, dx, dy, dz, color=bar_colors, shade=True, edgecolor='none', alpha=0.92)
@@ -95,7 +88,6 @@ def generate_3d_chart_base64(rows):
     plt.close(fig)
     return f"data:image/png;base64,{img_str}"
 
-# --- 5. Giao diện trang web Dashboard ---
 st.markdown("""
     <style>
     .main-title {
@@ -131,7 +123,6 @@ st.markdown("""
 st.markdown('<div class="main-title">Ứng dụng Big Data Streaming để phân tích độ hài lòng của khách hàng</div>', unsafe_allow_html=True)
 st.markdown('<div class="status-banner">TRẠNG THÁI: HỆ THỐNG STREAMING THỜI GIAN THỰC ĐANG HOẠT ĐỘNG</div>', unsafe_allow_html=True)
 
-# Các thẻ Metrics thống kê
 elapsed = time.monotonic() - st.session_state.started_at
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -145,7 +136,6 @@ with col4:
 
 st.markdown("---")
 
-# Bố cục 2 cột (Bảng chi tiết và Biểu đồ 3D)
 left_col, right_col = st.columns([1.5, 1.0])
 
 with left_col:
@@ -153,7 +143,6 @@ with left_col:
     if st.session_state.history:
         df_display = pd.DataFrame(st.session_state.history[-7:])
         
-        # Tạo định dạng HTML cho từng dòng trong bảng
         html_table = """
         <table style="width:100%; border-collapse: collapse; background:#ffffff; font-size:0.95em; color: #212529;">
             <thead>
@@ -179,6 +168,7 @@ with left_col:
                 </tr>
             """
         html_table += "</tbody></table>"
+        # Sửa lỗi hiển thị mã HTML bằng cách dùng unsafe_allow_html=True
         st.markdown(html_table, unsafe_allow_html=True)
     else:
         st.info("Đang chờ dữ liệu streaming...")
@@ -187,22 +177,18 @@ with right_col:
     st.subheader("Biểu đồ 3D Phân phối cảm xúc")
     if st.session_state.history:
         chart_uri = generate_3d_chart_base64(st.session_state.history)
-        # Sử dụng đúng cú pháp container width tương thích phiên bản Streamlit mới
         st.image(chart_uri, use_container_width=True)
     else:
         st.write("Chưa đủ dữ liệu vẽ biểu đồ.")
 
-# --- 6. Cơ chế tự động làm mới Real-time liên tục ---
 if elapsed < run_duration:
-    time.sleep(1.2) # Nhịp làm mới mỗi 1.2 giây
+    time.sleep(1.2)
     st.session_state.processed_count += 1
     
-    # Lấy dữ liệu mẫu tiếp theo
     rev_text, rating = random.choice(sample_reviews)
     res = sentiment_analyzer(rev_text[:500])[0]
     label = res['label'].lower()
     
-    # Gắn màu sắc và phân loại cảm xúc chuẩn xác
     if "pos" in label:
         if rating >= 4.5:
             emo, t_color, b_color = ('Rất tích cực', '#052c11', '#a3cfbb')
@@ -224,5 +210,4 @@ if elapsed < run_duration:
         "b_color": b_color
     })
     
-    # Kích hoạt làm mới trang liên tục giữ hiệu ứng real-time
     st.rerun()
