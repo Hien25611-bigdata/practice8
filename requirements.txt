@@ -1,0 +1,12 @@
+streamlit
+confluent-kafka
+transformers
+plotly
+requests
+matplotlib
+torch
+torchvision
+torchaudio
+pandas
+numpy
+certifi
